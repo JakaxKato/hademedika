@@ -1,0 +1,29 @@
+{
+  "name": "hademedika-website",
+  "version": "1.0.0",
+  "description": "Pratinjau website layanan gigi Hade Medika Cicurug dengan permintaan kunjungan melalui WhatsApp",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test tests/*.test.js",
+    "test:e2e": "playwright test"
+  },
+  "keywords": [
+    "hade-medika",
+    "klinik-gigi",
+    "cicurug",
+    "sukabumi",
+    "dental-clinic"
+  ],
+  "author": "Hade Medika",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@tailwindcss/forms": "^0.5.11",
+    "autoprefixer": "^10.4.21",
+    "tailwindcss": "^3.4.19",
+    "vite": "^6.2.0"
+  }
+}
