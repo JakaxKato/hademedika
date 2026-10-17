@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "powershell",
+      "Shell(npm:*)",
+      "Shell(powershell -NoProfile -Command Select-String -Path dist\\index.html -Pattern media-placeholder|data:image/svg)",
+      "Shell(ForEach-Object:*)",
+      "Shell([Math]::Max:*)",
+      "Shell(0,.Line.IndexOf:*)",
+      "Shell(media-placeholder:*)",
+      "Shell(-80:*)",
+      "Shell(,:*)",
+      "Shell(240,:*)",
+      "Shell(}:*)",
+      "Shell(Select-Object:*)",
+      "Shell(powershell -NoProfile -Command Select-String -Path dist\\assets\\index-*.css -Pattern 426c52)",
+      "Shell(Measure-Object:*)",
+      "Shell(node shot.mjs)",
+      "Shell(node C:\\Users\\wijay\\AppData\\Local\\Temp\\commandcode\\C--Users-wijay-Documents-hademedika\\df5a05e9-fac8-43c9-9672-45ef4a089c95\\scratchpad\\shot.mjs)",
+      "Shell(npx playwright test e2e/tmp-visual.spec.js --project=desktop --reporter=list)",
+      "Shell(npx playwright test e2e/tmp-visual.spec.js --project=desktop --grep icon subset --reporter=list)"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}

@@ -1,7 +1,7 @@
 export function initScrollReveals(doc = document, view = window) {
   const motion = view.matchMedia('(prefers-reduced-motion: reduce)');
   if (motion.matches || typeof view.IntersectionObserver !== 'function') return;
-  const targets = [...doc.querySelectorAll('section h2, .doctor-card, .service-card, .gallery-card, section .hover-lift, [data-reveal]')];
+  const targets = [...doc.querySelectorAll('section h2, .doctor-card, section .hover-lift, [data-reveal]')];
   let observer;
 
   const reveal = (target, immediate = false) => {

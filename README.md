@@ -1,12 +1,13 @@
-# Hade Medika Cicurug — pratinjau website layanan gigi
+# Hade Medika Cicurug — website layanan gigi
 
 Website statis dengan Vite, Tailwind CSS 3 yang dikompilasi saat build,
 JavaScript modular, serta tipografi Newsreader dan Manrope. Nuansa krem dan
-hijau dibuat senada dengan materi dokter yang diberikan, tanpa mengubah warna
-atau wajah pada poster.
+hijau dibuat senada dengan materi klinik yang diberikan.
 
-**Status:** demo penawaran, bukan sistem manajemen pasien atau reservasi otomatis.
-Konten final, izin publikasi, harga, dan informasi praktik harus disetujui klinik.
+**Status konten:** tarif resmi, foto klinik/dokter, ulasan, rating, dan jam
+kunjungan universal belum diverifikasi klinik. Semua bagian tersebut sengaja
+tidak menampilkan angka atau gambar rekaan; gantinya ada media placeholder,
+pengajuan jadwal yang dikonfirmasi admin, dan tautan ke Google Maps.
 
 ## Menjalankan
 
@@ -30,99 +31,72 @@ API key, atau WhatsApp Business API yang dibutuhkan untuk versi ini.
 
 ## Yang sudah tersedia
 
-- Tujuh dokter gigi beserta jadwal dari materi poster: drg. Eka, Hanif, Irsyad,
-  Firda, Linni, Shania, dan Isna. Data di `assets/js/clinic-data.js`.
-- Pilihan dokter pada kartu terhubung ke formulir. Pilihan jam mengikuti jadwal
-  dokter, dengan interval mulai 30 menit. Ini **bukan durasi tindakan** dan
-  **bukan informasi slot kosong**.
-- Hari ini dihitung menurut `Asia/Jakarta`, bukan zona waktu perangkat. Jam
-  yang sudah berlalu tidak bisa dipilih.
-- Jadwal Minggu drg. Shania (minggu kedua) dan drg. Isna (minggu keempat)
-  ditampilkan sebagai jadwal yang perlu konfirmasi. Tidak ditebak sebagai
-  tanggal tertentu dan tidak dimasukkan ke opsi jam otomatis.
-- Ringkasan permintaan sebelum membuka WhatsApp. Nama dokter dan waktu ikut
-  dalam pesan. Pengguna tetap perlu mengirim pesan dan menunggu konfirmasi admin.
-- Persetujuan pengiriman data, validasi nomor WhatsApp, catatan opsional,
-  informasi privasi, dan kesalahan formulir yang dapat dibaca screen reader.
-- Embed Google Maps interaktif, tautan rute, Instagram berdasarkan handle pada
-  poster, favicon SVG/PNG, serta ikon sentuh Apple.
-- Informasi biaya per layanan dengan tombol WhatsApp khusus, tanpa tarif rekaan.
-- Pratinjau galeri dengan pembesaran gambar dan label ilustrasi yang eksplisit.
-- Dukungan banyak testimoni bersumber, tanpa mengarang ulasan atau rating.
+- **Media placeholder** (`.clinic-media`): komposisi krem–sage dengan
+  ilustrasi garis arsitektural, rasio yang tetap (hero 4:3, kartu dokter 4:5),
+  dan label kecil "Media klinik akan ditambahkan". Komponen yang sama siap
+  menerima foto resmi tanpa mengubah layout.
+- **Tujuh dokter gigi** dengan jadwal praktik dari materi poster; nama, peran,
+  dan label jadwal ditampilkan sebagai teks. Tidak ada potret, SIP, atau
+  biografi yang dikarang. Pilihan dokter langsung mengisi formulir.
+- **Formulir kunjungan**: nama pasien, nomor WhatsApp, kebutuhan perawatan,
+  preferensi dokter, tanggal (kosong secara default, minimum hari ini menurut
+  `Asia/Jakarta`), preferensi waktu (Pagi/Siang/Sore/Fleksibel), catatan, dan
+  persetujuan pengiriman data.
+- **Validasi inline**: setiap kolom bermasalah mendapat pesan sendiri dengan
+  `aria-invalid` dan `aria-describedby`; ringkasan kesalahan tampil di atas
+  tombol. Nomor WhatsApp Indonesia divalidasi, tanggal lampau ditolak.
+- **Ringkasan sebelum kirim**: permintaan ditinjau pada dialog, lalu pengguna
+  melanjutkan ke WhatsApp. Setelah itu muncul success state
+  ("Permintaan siap dikirim") dan pesan status pada formulir.
+- **Pesan WhatsApp terstruktur**: nama, layanan, dokter pilihan, tanggal,
+  preferensi waktu, dan catatan — dengan penegasan bahwa jadwal belum pasti.
+- **Informasi biaya** per layanan dengan tombol WhatsApp berisi pertanyaan
+  estimasi awal; tidak ada tarif rekaan, dan disebut jelas bahwa estimasi bukan
+  biaya final.
+- **Ulasan jujur**: satu blok kepercayaan yang menautkan ke Google Maps, plus
+  slot rating opsional (`#google-rating`) yang dibiarkan kosong sampai angkanya
+  diverifikasi klinik.
+- Embed Google Maps interaktif, tautan "Buka di Google Maps" / "Petunjuk Rute",
+  kontak WhatsApp, Instagram, FAQ, informasi privasi, favicon SVG/PNG, dan ikon
+  sentuh Apple.
 - Dialog native dengan Escape/fokus keyboard, menu dan FAQ dengan status ARIA,
-  serta animasi scroll ringan yang menghormati `prefers-reduced-motion`.
+  tombol ≥44px di mobile, sticky booking bar yang tidak menutupi kolom
+  formulir (`scroll-margin-bottom`), serta animasi yang hanya memakai
+  opacity/transform dan menghormati `prefers-reduced-motion`.
 - Konten tetap terlihat ketika JavaScript/IntersectionObserver tidak tersedia.
 
-## Foto dokter: masih perlu file asli
+## Mengganti media placeholder dengan foto resmi
 
-Gambar yang dilampirkan dalam chat belum tersedia sebagai file proyek.
-Letakkan poster asli di `assets/images/doctors/`:
+1. **Hero** (`index.html`, cari `clinic-media-art`): ganti `<img
+   class="clinic-media-img clinic-media-art" …>` dengan foto asli —
+   `<img class="clinic-media-img" src="assets/images/nama-foto.jpg"
+   alt="Deskripsi foto">` — lalu hapus elemen `.clinic-media-label`.
+   Jangan ubah `.clinic-media-frame`, karena rasio 4:3 dipertahankan agar
+   tidak ada pergeseran layout.
+2. **Dokter**: letakkan potret di `assets/images/doctors/` dengan nama
+   `drg-<key>.jpg` (lihat `assets/images/doctors/README.md`). Pemuat Vite
+   mendeteksi file saat dev server/build berjalan; kartu otomatis menampilkan
+   foto dengan `object-fit: cover` dan alt text yang bermakna.
 
-```text
-drg-eka.jpg
-drg-hanif.jpg
-drg-irsyad.jpg
-drg-firda.jpg
-drg-linni.jpg
-drg-shania.jpg
-drg-isna.jpg
-```
+Gunakan hanya foto berizin dari klinik, dengan pencahayaan yang konsisten dan
+tanpa filter yang mengubah wajah.
 
-Ekstensi `.jpeg`, `.png`, dan `.webp` juga didukung. Lihat
-`assets/images/doctors/README.md` untuk aturan penamaan. Pemuat mendeteksi file
-saat Vite memproses modul; restart dev server bila perlu dan build ulang sebelum
-deploy. Poster tampil utuh, dengan nama dan jadwal dalam teks di bawahnya.
-Ketika file belum ada, gunakan fallback berinisial yang jelas, bukan foto palsu.
+## Informasi yang harus diverifikasi sebelum publikasi
 
-Materi dr. Hamidi dan dr. Kirei adalah dokter umum, sedangkan dr. Nadelia
-tertulis dokter estetika. Mereka tidak dipresentasikan sebagai dokter gigi.
+- Tarif, komponen biaya, dan metode pembayaran.
+- Jam praktik terbaru per dokter, hari libur, dan jam kunjungan universal.
+- Kerja sama BPJS/asuransi.
+- Tautan Google Business Profile (Place ID) dan rating ulasan, termasuk izin
+  menampilkan angkanya pada `#google-rating`.
+- Izin publikasi foto ruang klinik, tim, dan hasil perawatan (hasil hanya
+  dengan izin pasien).
+- Nomor WhatsApp `6281359599996` dan handle Instagram `@hademedica` (keduanya
+  berasal dari materi poster).
+- Pin sementara `-6.796823, 106.776861` berasal dari sumber pihak ketiga; minta
+  tautan Maps resmi dari klinik sebelum publikasi.
 
-## Foto tempat, tarif, dan testimoni
-
-`clinic-interior.jpg` dan `clinic-lounge.jpg` masih ilustrasi konsep, bukan
-representasi klinik yang telah diverifikasi. Ganti dengan foto asli berizin
-setelah diskusi dengan klinik. Tambahkan tombol galeri dengan atribut
-`data-gallery-image=""` berisi `<img src="...">`; URL gambar diambil dari elemen
-img yang diproses Vite agar tetap benar dalam build produksi. Gunakan
-`data-gallery-caption` untuk caption. Jangan menampilkan hasil perawatan
-sebagai hasil klinik tanpa sumber dan izin pasien.
-
-Bagian `#biaya` pada `index.html` menampilkan faktor biaya dan tautan pertanyaan
-ke admin. Angka tidak diisi sebelum tarif resmi serta komponennya disetujui.
-Saat menambahkan harga, jelaskan satuan, apakah konsultasi/obat termasuk, dan
-bahwa biaya akhir mengikuti pemeriksaan.
-
-Untuk menampilkan beberapa testimoni asli, isi `PATIENT_REVIEWS` dalam
-`assets/js/clinic-data.js` dengan struktur berikut (nilai harus berasal dari
-ulasan asli, bukan contoh yang dipublikasikan):
-
-```ts
-{
-  name: string,
-  quote: string,
-  sourceUrl: string, // URL sumber lengkap HTTP(S)
-  approved: true   // sumber dan izin publikasi sudah diperiksa
-}
-```
-
-Kutipan ditampilkan sebagai teks, bukan HTML. Entri tidak sah/tanpa persetujuan
-tidak ditampilkan. Jika daftar kosong, tampilan menjelaskan bahwa kutipan belum
-tersedia dan memberikan tautan pencarian klinik di Google Maps.
-
-## Lokasi dan tautan
-
-- WhatsApp: `6281359599996` (sesuai poster yang diberikan).
-- Instagram: `https://www.instagram.com/hademedica/` (handle pada poster).
-- Pin sementara: `-6.796823, 106.776861`, sumber pihak ketiga yang mencocokkan
-  nama, alamat, dan nomor telepon: <https://exa.ai/library/place/spd1y08l8l1>.
-- Google Place ID / permalink profil bisnis belum diverifikasi. Minta tautan
-  Maps resmi dari klinik sebelum publikasi. Link ulasan masih pencarian nama
-  klinik, bukan klaim terhubung ke ulasan tertentu.
-
-Jadwal poster tidak digunakan untuk membuat klaim buka/tutup secara langsung:
-hari libur, perubahan praktik, dan kapasitas pasien belum terhubung ke sistem.
-Nomor SIP, email, rating, testimoni, dan nama dokter contoh sebelumnya sudah
-dihapus karena belum ada sumber yang dapat diverifikasi.
+Jangan menambahkan nama, kredensial, penghargaan, testimoni, harga, atau jam
+buka tanpa sumber tertulis dari klinik.
 
 ## Privasi dan layanan pihak ketiga
 
@@ -133,9 +107,10 @@ bukan melalui kolom catatan. WhatsApp memproses data sesuai kebijakannya.
 
 Google Maps dan Google Fonts untuk teks membutuhkan internet serta
 melibatkan permintaan ke server Google. Ikon Material Symbols sudah di-host
-lokal sebagai subset kecil; lisensi Apache 2.0 ada di `assets/fonts/`. Pertimbangkan hosting font sendiri dan
-mekanisme persetujuan peta sesuai kebutuhan kebijakan privasi klinik. Pernyataan
-privasi pada demo harus ditinjau lagi sebelum peluncuran resmi.
+lokal sebagai subset kecil; lisensi Apache 2.0 ada di `assets/fonts/`.
+Pertimbangkan hosting font sendiri dan mekanisme persetujuan peta sesuai
+kebutuhan kebijakan privasi klinik. Pernyataan privasi harus ditinjau lagi
+sebelum peluncuran resmi.
 
 ## Validasi
 
@@ -145,15 +120,17 @@ npm run build
 npm run test:e2e -- --workers=2
 ```
 
-Unit test menggunakan `node:test`. Pengujian browser menggunakan Playwright dan
-Google Chrome yang **sudah terpasang** (`channel: 'chrome'`), agar tidak perlu
-mengunduh Chromium tambahan. Playwright memulai dan menutup Vite secara otomatis.
-Tes browser mencakup desktop/mobile, pilihan dokter, jam praktik, validasi,
-pesan WhatsApp (tanpa benar-benar mengirim), dialog, FAQ, menu, reduced motion,
-dan overflow layar 360–1440px. Screenshot ada di `test-results/`.
+Unit test menggunakan `node:test` (validasi formulir, normalisasi nomor,
+pesan WhatsApp, dan reveal animation). Pengujian browser menggunakan Playwright
+dan Google Chrome yang **sudah terpasang** (`channel: 'chrome'`), agar tidak
+perlu mengunduh Chromium tambahan. Playwright memulai dan menutup Vite secara
+otomatis. Tes browser mencakup desktop/mobile, audit link mati dan anchor,
+validasi inline, ringkasan dan success state WhatsApp (tanpa benar-benar
+mengirim), dialog, FAQ, menu, reduced motion, dan overflow layar 360–1440px.
+Screenshot ada di `test-results/`.
 
-`npm audit` saat perubahan ini menemukan advisori pada dependensi alat build
-Tailwind 3 (braces / postcss-selector-parser beserta dependensinya). Perbaikan
-otomatis meminta migrasi mayor ke Tailwind 4, sehingga tidak diterapkan diam-diam.
+`npm audit` menemukan advisori pada dependensi alat build Tailwind 3
+(braces / postcss-selector-parser beserta dependensinya). Perbaikan otomatis
+meminta migrasi mayor ke Tailwind 4, sehingga tidak diterapkan diam-diam.
 Dependensi tersebut tidak dikirim sebagai JavaScript ke pengunjung; perbarui
 pipeline build secara terencana dan jangan mengekspos dev server ke publik.

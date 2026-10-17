@@ -1,7 +1,8 @@
-import { DENTISTS, getDentist } from './clinic-data.js';
+import { getDentist } from './clinic-data.js';
 
 export const TIME_ZONE = 'Asia/Jakarta';
 export const CLINIC_WHATSAPP = '6281359599996';
+
 export const SERVICES = Object.freeze({
   konsultasi: 'Pemeriksaan & Konsultasi Dokter Gigi',
   scaling: 'Scaling / Pembersihan Karang Gigi',
@@ -10,6 +11,14 @@ export const SERVICES = Object.freeze({
   anak: 'Perawatan Gigi Anak',
   veneer: 'Konsultasi Veneer / Perawatan Estetik',
   unsure: 'Belum yakin — konsultasi dahulu',
+});
+
+/** Broad time-of-day preferences only. The exact hour is confirmed by admin. */
+export const TIME_PREFERENCES = Object.freeze({
+  pagi: 'Pagi',
+  siang: 'Siang',
+  sore: 'Sore',
+  fleksibel: 'Fleksibel — mengikuti saran admin',
 });
 
 const jakartaClock = new Intl.DateTimeFormat('en-CA', {
@@ -22,13 +31,10 @@ const dateFormatter = new Intl.DateTimeFormat('id-ID', {
   weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
 });
 
-export function getJakartaNow(now = new Date()) {
+/** Today's date in Jakarta, independent of the machine time zone. */
+export function getJakartaToday(now = new Date()) {
   const parts = Object.fromEntries(jakartaClock.formatToParts(now).map(part => [part.type, part.value]));
-  return {
-    date: `${parts.year}-${parts.month}-${parts.day}`,
-    minutes: Number(parts.hour) * 60 + Number(parts.minute)
-      + Number(parts.second) / 60 + now.getMilliseconds() / 60000,
-  };
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 export function isValidDate(value) {
@@ -38,7 +44,7 @@ export function isValidDate(value) {
 }
 
 export function isBookableDate(value, now = new Date()) {
-  return isValidDate(value) && value >= getJakartaNow(now).date;
+  return isValidDate(value) && value >= getJakartaToday(now);
 }
 
 export function normalizeIndonesianPhone(value) {
@@ -46,51 +52,6 @@ export function normalizeIndonesianPhone(value) {
   const compact = value.trim().replace(/[ -]/g, '');
   const match = compact.match(/^(?:\+?62|0)(8[1-9]\d{7,10})$/);
   return match ? `+62${match[1]}` : null;
-}
-
-const toMinutes = time => Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
-const toTime = minutes => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
-
-/** Thirty-minute request start times, not treatment durations or live vacancies. */
-export function getScheduleAvailability({ date, doctorKey = '', now = new Date() } = {}) {
-  const validDoctor = doctorKey === '' || Boolean(getDentist(doctorKey));
-  const validDate = isBookableDate(date, now);
-  const result = { slots: [], conditionalDoctors: [], validDoctor, validDate, note: '' };
-  const disclaimer = 'Jadwal indikatif dari poster, bukan ketersediaan langsung. Jam yang dipilih adalah permintaan; admin perlu mengonfirmasi dokter dan waktu kunjungan.';
-  if (!validDoctor || !validDate) {
-    result.note = `${!validDoctor ? 'Pilih dokter yang tercantum.' : 'Pilih tanggal hari ini atau sesudahnya (WIB).'} ${disclaimer}`;
-    return result;
-  }
-
-  const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
-  const clock = getJakartaNow(now);
-  const selected = doctorKey === '' ? DENTISTS : [getDentist(doctorKey)];
-  const slots = new Set();
-
-  // Preserve the poster caveat on every Sunday; never infer ordinal Sundays.
-  result.conditionalDoctors = DENTISTS.filter(doctor => doctor.schedule.some(
-    interval => interval.requiresAdmin && interval.days.includes(weekday),
-  )).map(doctor => doctor.key);
-
-  for (const doctor of selected) {
-    for (const interval of doctor.schedule) {
-      if (!interval.days.includes(weekday) || interval.requiresAdmin) continue;
-      for (let minute = toMinutes(interval.start); minute < toMinutes(interval.end); minute += 30) {
-        if (date === clock.date && minute < clock.minutes) continue;
-        slots.add(toTime(minute));
-      }
-    }
-  }
-
-  result.slots = [...slots].sort();
-  const conditionalNote = result.conditionalDoctors.length
-    ? ` Jadwal Minggu ${result.conditionalDoctors.map(key => getDentist(key).name).join(' dan ')} perlu konfirmasi admin karena keterangan minggu pada poster belum memastikan tanggal praktik; jadwal tersebut tidak dimasukkan ke pilihan jam.`
-    : '';
-  const unavailableNote = result.slots.length === 0
-    ? ' Tidak ada jam yang dapat diminta untuk pilihan ini. Pilih dokter/tanggal lain atau hubungi admin melalui WhatsApp.'
-    : '';
-  result.note = disclaimer + conditionalNote + unavailableNote;
-  return result;
 }
 
 const text = value => typeof value === 'string' ? value.trim() : '';
@@ -102,20 +63,20 @@ export function validateBooking(input = {}, now = new Date()) {
     service: text(input.service),
     doctorKey: typeof input.doctorKey === 'string' ? input.doctorKey : null,
     date: text(input.date),
-    slot: text(input.slot),
+    time: text(input.time),
     notes: text(input.notes),
     consent: input.consent === true,
   };
+  const validDoctor = booking.doctorKey === '' || Boolean(getDentist(booking.doctorKey));
   const errors = [];
   if (!booking.name) errors.push({ field: 'name', message: 'Isi nama pasien.' });
   if (!booking.wa) errors.push({ field: 'wa', message: 'Isi nomor WhatsApp Indonesia yang valid, misalnya 0812-3456-7890 atau +62 812-3456-7890.' });
   if (!Object.hasOwn(SERVICES, booking.service)) errors.push({ field: 'service', message: 'Pilih layanan yang tercantum.' });
-  const availability = getScheduleAvailability({ date: booking.date, doctorKey: booking.doctorKey, now });
-  if (!availability.validDoctor) errors.push({ field: 'doctor', message: 'Pilih dokter yang tercantum atau tanpa preferensi dokter.' });
-  if (!availability.validDate) errors.push({ field: 'date', message: 'Pilih tanggal yang valid, mulai hari ini menurut waktu Jakarta (WIB).' });
-  if (!availability.slots.includes(booking.slot)) errors.push({ field: 'slot', message: availability.slots.length ? 'Pilih jam dari jadwal yang tersedia untuk diminta.' : 'Tidak ada jam yang dapat diminta. Pilih dokter/tanggal lain atau hubungi admin.' });
+  if (!validDoctor) errors.push({ field: 'doctor', message: 'Pilih dokter yang tercantum atau tanpa preferensi dokter.' });
+  if (!isBookableDate(booking.date, now)) errors.push({ field: 'date', message: 'Pilih tanggal kunjungan, mulai hari ini menurut waktu Jakarta (WIB).' });
+  if (!Object.hasOwn(TIME_PREFERENCES, booking.time)) errors.push({ field: 'time', message: 'Pilih preferensi waktu kunjungan.' });
   if (!booking.consent) errors.push({ field: 'consent', message: 'Setujui pengiriman data melalui WhatsApp sebelum melanjutkan.' });
-  return { valid: errors.length === 0, errors, booking, availability };
+  return { valid: errors.length === 0, errors, booking };
 }
 
 export function formatBookingDate(date) {
@@ -132,6 +93,7 @@ export function getDoctorLabel(doctorKey) {
 
 export function buildWhatsAppMessage(booking) {
   if (!Object.hasOwn(SERVICES, booking.service)) throw new RangeError('Unknown service');
+  if (!Object.hasOwn(TIME_PREFERENCES, booking.time)) throw new RangeError('Unknown time preference');
   return [
     'Halo Admin Hade Medika Cicurug,',
     'Saya ingin mengajukan permintaan kunjungan perawatan gigi:',
@@ -140,11 +102,11 @@ export function buildWhatsAppMessage(booking) {
     `WhatsApp: ${booking.wa}`,
     `Layanan: ${SERVICES[booking.service]}`,
     `Dokter pilihan: ${getDoctorLabel(booking.doctorKey)}`,
-    `Tanggal: ${formatBookingDate(booking.date)}`,
-    `Jam yang diminta: ${booking.slot} WIB`,
+    `Tanggal yang diinginkan: ${formatBookingDate(booking.date)}`,
+    `Preferensi waktu: ${TIME_PREFERENCES[booking.time]}`,
     `Catatan (opsional): ${booking.notes || 'Tidak ada catatan'}`,
     '',
-    'Ini permintaan jadwal, bukan janji yang sudah dikonfirmasi. Mohon konfirmasi dokter dan waktu kunjungan. Terima kasih.',
+    'Jam pasti belum ditentukan dan akan dikonfirmasi oleh admin. Ini permintaan jadwal, bukan janji yang sudah dikonfirmasi. Terima kasih.',
   ].join('\n');
 }
 

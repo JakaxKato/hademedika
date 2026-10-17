@@ -1,14 +1,18 @@
+import mediaArtUrl from '../images/media-placeholder.svg';
 import { DENTISTS, getDentist } from './clinic-data.js';
 import { initScrollReveals } from './reveals.js';
-import { renderPatientReviews } from './reviews.js';
 import {
-  SERVICES, buildWhatsAppUrl, formatBookingDate, getDoctorLabel,
-  getJakartaNow, getScheduleAvailability, validateBooking,
+  SERVICES, TIME_PREFERENCES, buildWhatsAppUrl, formatBookingDate, getDoctorLabel,
+  getJakartaToday, validateBooking,
 } from './booking.js';
 
+const MEDIA_LABEL = 'Media klinik akan ditambahkan';
 const doctorPhotos = import.meta.glob('../images/doctors/*.{jpg,jpeg,png,webp}', {
   eager: true, query: '?url', import: 'default',
 });
+const doctorPhotoByKey = Object.fromEntries(Object.entries(doctorPhotos).map(([path, url]) => [
+  path.split('/').pop().replace(/\.[^.]+$/, '').replace(/^drg-/, '').toLowerCase(), url,
+]));
 const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function element(tag, className = '', text) {
@@ -18,12 +22,44 @@ function element(tag, className = '', text) {
   return node;
 }
 
+/** Reusable media slot with a stable aspect ratio. The placeholder is a
+ * deliberate temporary state: to publish an official photo, replace the art
+ * with <img class="clinic-media-img" src="…" alt="…"> and drop the label.
+ */
+function createClinicMedia({ ratio, monogram = '', photo = null, alt = '', label = MEDIA_LABEL }) {
+  const figure = element('figure', 'clinic-media');
+  figure.dataset.ratio = ratio;
+  const frame = element('div', 'clinic-media-frame');
+  if (photo) {
+    const image = element('img', 'clinic-media-img');
+    image.src = photo;
+    image.alt = alt;
+    image.loading = 'lazy';
+    image.decoding = 'async';
+    frame.append(image);
+  } else {
+    const art = element('img', 'clinic-media-img clinic-media-art');
+    art.src = mediaArtUrl;
+    art.alt = '';
+    art.setAttribute('aria-hidden', 'true');
+    frame.append(art);
+    if (monogram) {
+      const mark = element('span', 'clinic-media-monogram font-display', monogram);
+      mark.setAttribute('aria-hidden', 'true');
+      frame.append(mark);
+    }
+    frame.append(element('span', 'clinic-media-label', label));
+  }
+  figure.append(frame);
+  return figure;
+}
+
 /** Native modal behavior supplies focus containment and Escape support. */
 function createDialog(id, title, extraClass = '') {
   const dialog = element('dialog', `modal-card font-body ${extraClass}`.trim());
   dialog.id = id;
   const heading = element('div', 'modal-heading');
-  const titleNode = element('h2', 'font-headline', title);
+  const titleNode = element('h2', 'font-display', title);
   titleNode.id = `${id}-title`;
   dialog.setAttribute('aria-labelledby', titleNode.id);
   const closeButton = element('button', 'modal-close btn-secondary text-sm', 'Tutup');
@@ -64,47 +100,6 @@ function createDialog(id, title, extraClass = '') {
   };
 }
 
-let imageDialog;
-function showImage(source, caption) {
-  let url;
-  try {
-    url = new URL(source, document.baseURI);
-    if (!['http:', 'https:'].includes(url.protocol)) return;
-  } catch {
-    return;
-  }
-  imageDialog ||= createDialog('image-dialog', 'Lihat gambar', 'image-dialog');
-  imageDialog.title.textContent = caption;
-  const image = element('img', 'image-dialog-image');
-  image.alt = caption;
-  image.addEventListener('error', () => {
-    image.replaceWith(element('p', 'text-sm', 'Gambar tidak dapat dimuat. Silakan hubungi admin.'));
-  }, { once: true });
-  image.src = url.href;
-  imageDialog.body.replaceChildren(image, element('p', 'image-dialog-caption text-sm', caption));
-  imageDialog.open();
-}
-
-function initGallery() {
-  document.querySelectorAll('button[data-gallery-image]').forEach(button => {
-    button.type = 'button';
-    button.setAttribute('aria-haspopup', 'dialog');
-    button.addEventListener('click', () => {
-      const image = button.querySelector('img');
-      const source = button.dataset.galleryImage || button.dataset.src
-        || button.getAttribute('src') || image?.currentSrc || image?.getAttribute('src');
-      if (!source) return;
-      showImage(source, button.dataset.galleryCaption || image?.alt || 'Foto klinik');
-    });
-  });
-}
-
-function showPhotoFallback(portrait, doctor) {
-  const initials = element('span', 'doctor-photo-fallback font-headline', doctor.initials);
-  initials.setAttribute('aria-hidden', 'true');
-  portrait.replaceChildren(initials, element('span', 'doctor-photo-note font-body text-sm', 'Foto dokter menyusul'));
-}
-
 function renderDoctors() {
   const select = document.getElementById('doctor');
   if (select) {
@@ -115,40 +110,21 @@ function renderDoctors() {
   }
   const grid = document.getElementById('doctor-grid');
   if (!grid) return;
-  const cards = DENTISTS.map((doctor, index) => {
+  const cards = DENTISTS.map(doctor => {
     const card = element('article', 'doctor-card');
-    card.dataset.photoLayout = 'poster';
     const titleId = `doctor-${doctor.key}-title`;
     card.setAttribute('aria-labelledby', titleId);
-    const portrait = element('div', 'doctor-portrait');
-    portrait.dataset.photoLayout = 'poster';
-    const photo = [`drg-${doctor.key}`, doctor.key].map(basename => Object.entries(doctorPhotos).find(
-      ([path]) => path.split('/').pop().replace(/\.[^.]+$/, '').toLowerCase() === basename,
-    )).find(Boolean)?.[1];
-    if (photo) {
-      const button = element('button', 'doctor-photo-button');
-      button.type = 'button';
-      button.setAttribute('aria-haspopup', 'dialog');
-      button.setAttribute('aria-label', `Lihat poster lengkap ${doctor.name}`);
-      const image = element('img', 'doctor-portrait-image');
-      image.alt = `Poster jadwal ${doctor.name}`;
-      image.loading = 'lazy';
-      image.decoding = 'async';
-      image.addEventListener('error', () => showPhotoFallback(portrait, doctor), { once: true });
-      image.src = photo;
-      button.append(image);
-      button.addEventListener('click', () => showImage(photo, `Poster jadwal ${doctor.name}`));
-      portrait.append(button);
-    } else {
-      showPhotoFallback(portrait, doctor);
-    }
+    card.append(createClinicMedia({
+      ratio: '4x5',
+      monogram: doctor.initials,
+      photo: doctorPhotoByKey[doctor.key] || null,
+      alt: `Foto ${doctor.name}, ${doctor.role} di Hade Medika Cicurug`,
+    }));
     const info = element('div', 'doctor-info');
-    const number = element('span', 'doctor-number', String(index + 1).padStart(2, '0'));
-    number.setAttribute('aria-hidden', 'true');
-    const role = element('p', 'doctor-role font-body text-sm', doctor.role);
-    const title = element('h3', 'font-headline', doctor.name);
+    const role = element('p', 'doctor-role', doctor.role);
+    const title = element('h3', 'font-display', doctor.name);
     title.id = titleId;
-    const schedule = element('ul', 'doctor-schedule font-body text-sm');
+    const schedule = element('ul', 'doctor-schedule');
     doctor.scheduleLabels.forEach(label => schedule.append(element('li', '', label)));
     const bookButton = element('button', 'doctor-book-link', `Pilih ${doctor.name}`);
     bookButton.type = 'button';
@@ -160,8 +136,8 @@ function renderDoctors() {
       select.dispatchEvent(new Event('change', { bubbles: true }));
       focusBooking(select);
     });
-    info.append(number, role, title, schedule, bookButton);
-    card.append(portrait, info);
+    info.append(role, title, schedule, bookButton);
+    card.append(info);
     return card;
   });
   grid.replaceChildren(...cards);
@@ -178,13 +154,13 @@ function showBookingSummary(booking) {
   bookingDialog ||= createDialog('booking-modal', 'Ringkasan permintaan');
   const summary = element('dl', 'modal-summary');
   const rows = [
-    ['Nama', booking.name],
-    ['WhatsApp', booking.wa],
-    ['Layanan', SERVICES[booking.service]],
-    ['Dokter pilihan', getDoctorLabel(booking.doctorKey)],
-    ['Tanggal', formatBookingDate(booking.date)],
-    ['Jam yang diminta', `${booking.slot} WIB`],
-    ['Catatan (opsional)', booking.notes || 'Tidak ada catatan'],
+    ['Nama pasien', booking.name],
+    ['Nomor WhatsApp', booking.wa],
+    ['Kebutuhan perawatan', SERVICES[booking.service]],
+    ['Preferensi dokter', getDoctorLabel(booking.doctorKey)],
+    ['Tanggal yang diinginkan', formatBookingDate(booking.date)],
+    ['Preferensi waktu', TIME_PREFERENCES[booking.time]],
+    ['Catatan singkat', booking.notes || 'Tidak ada catatan'],
   ];
   rows.forEach(([label, value]) => {
     const row = element('div', 'modal-summary-row');
@@ -192,30 +168,40 @@ function showBookingSummary(booking) {
     summary.append(row);
   });
   bookingDialog.body.replaceChildren(
-    element('p', '', 'Periksa permintaan Anda. Jadwal ini belum dikonfirmasi dan data belum dikirim.'),
+    element('p', '', 'Periksa ringkasan ini. Jadwal belum dikonfirmasi dan data belum terkirim.'),
     summary,
-    element('p', 'text-sm', 'Data, termasuk catatan yang Anda tulis, hanya diteruskan ke WhatsApp saat Anda mengeklik tautan di bawah. Admin perlu mengonfirmasi dokter dan waktu kunjungan. Formulir ini tidak menyimpan data Anda.'),
+    element('p', 'text-sm', 'Data pada formulir, termasuk catatan Anda, hanya diteruskan ke WhatsApp setelah Anda menekan tautan di bawah dan mengirim pesannya.'),
   );
+  const waUrl = buildWhatsAppUrl(booking);
   const waLink = element('a', 'btn-primary text-sm', 'Lanjutkan ke WhatsApp');
-  waLink.href = buildWhatsAppUrl(booking);
+  waLink.href = waUrl;
   waLink.target = '_blank';
   waLink.rel = 'noopener noreferrer';
+  waLink.addEventListener('click', () => showHandoff(booking, waUrl));
   bookingDialog.actions.replaceChildren(waLink);
   bookingDialog.open();
 }
 
-function ensureLiveOutput(form, id, after) {
-  let output = document.getElementById(id);
-  if (!output) {
-    output = element('p', 'font-body text-sm');
-    output.id = id;
-    if (after) after.after(output);
-    else form.append(output);
+function showHandoff(booking, waUrl) {
+  const successOutput = document.getElementById('booking-success');
+  if (successOutput) {
+    successOutput.textContent = 'Permintaan kunjungan sudah disiapkan di WhatsApp. Kirim pesan di sana, lalu tunggu konfirmasi admin.';
   }
-  output.setAttribute('role', 'status');
-  output.setAttribute('aria-live', 'polite');
-  output.setAttribute('aria-atomic', 'true');
-  return output;
+  if (!bookingDialog) return;
+  bookingDialog.title.textContent = 'Permintaan siap dikirim';
+  bookingDialog.body.replaceChildren(
+    element('p', 'handoff-lead font-display', 'Pesan permintaan Anda sudah disiapkan di WhatsApp.'),
+    element('p', '', `Jadwal untuk ${booking.name} belum pasti. Kirim pesan yang sudah tertulis di WhatsApp, lalu tunggu balasan admin yang mengonfirmasi dokter, tanggal, dan jam kunjungan.`),
+    element('p', 'text-sm', 'WhatsApp terbuka di tab baru. Jika tidak terbuka, gunakan tombol “Buka WhatsApp lagi” di bawah.'),
+  );
+  const reopen = element('a', 'btn-primary text-sm', 'Buka WhatsApp lagi');
+  reopen.href = waUrl;
+  reopen.target = '_blank';
+  reopen.rel = 'noopener noreferrer';
+  const close = element('button', 'btn-secondary text-sm', 'Tutup ringkasan');
+  close.type = 'button';
+  close.addEventListener('click', () => bookingDialog.close());
+  bookingDialog.actions.replaceChildren(reopen, close);
 }
 
 function initBookingForm() {
@@ -224,75 +210,68 @@ function initBookingForm() {
   // Never allow a partial integration to submit patient data in a URL.
   form.addEventListener('submit', event => event.preventDefault());
   form.noValidate = true;
-  const errorOutput = ensureLiveOutput(form, 'booking-error');
-  errorOutput.tabIndex = -1;
+  const errorOutput = document.getElementById('booking-error');
+  const successOutput = document.getElementById('booking-success');
   const fields = Object.fromEntries(
-    ['name', 'wa', 'service', 'doctor', 'date', 'slot', 'notes', 'consent']
+    ['name', 'wa', 'service', 'doctor', 'date', 'time', 'notes', 'consent']
       .map(id => [id, form.querySelector(`#${id}`)]),
   );
-  if (Object.values(fields).some(field => !field) || fields.slot.tagName !== 'SELECT') {
-    errorOutput.textContent = 'Formulir belum lengkap. Silakan hubungi admin melalui WhatsApp.';
+  if (Object.values(fields).some(field => !field)) {
+    if (errorOutput) errorOutput.textContent = 'Formulir belum lengkap. Silakan hubungi admin melalui WhatsApp.';
     return;
   }
-  const scheduleNote = ensureLiveOutput(form, 'schedule-note', fields.slot);
-  fields.slot.required = true;
-  fields.consent.required = true;
-  ['name', 'wa', 'service', 'date'].forEach(id => { fields[id].required = true; });
-  Object.values(fields).forEach(field => {
-    const describedBy = new Set((field.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
-    describedBy.add(errorOutput.id);
-    if (field === fields.slot) describedBy.add(scheduleNote.id);
-    field.setAttribute('aria-describedby', [...describedBy].join(' '));
-  });
-  if (!fields.date.value) fields.date.value = getJakartaNow().date;
-
-  function refreshSchedule(now = new Date()) {
-    fields.date.min = getJakartaNow(now).date;
-    const previous = fields.slot.value;
-    const availability = getScheduleAvailability({
-      date: fields.date.value, doctorKey: fields.doctor.value, now,
-    });
-    const placeholder = new Option(
-      availability.slots.length ? 'Pilih jam permintaan (WIB)' : 'Tidak ada jam — hubungi admin', '',
-    );
-    placeholder.disabled = true;
-    fields.slot.replaceChildren(placeholder, ...availability.slots.map(time => new Option(`${time} WIB`, time)));
-    fields.slot.disabled = availability.slots.length === 0;
-    fields.slot.value = availability.slots.includes(previous) ? previous : '';
-    scheduleNote.textContent = availability.note;
+  const fieldErrors = new Map();
+  const describe = (field, id) => {
+    const ids = new Set((field.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
+    ids.add(id);
+    field.setAttribute('aria-describedby', [...ids].join(' '));
+  };
+  if (errorOutput) {
+    errorOutput.tabIndex = -1;
+    Object.values(fields).forEach(field => describe(field, errorOutput.id));
+  }
+  function showFieldError(field, message) {
+    let node = fieldErrors.get(field);
+    if (!node) {
+      node = element('p', 'field-error');
+      node.id = `${field.id}-error`;
+      field.closest('div')?.append(node);
+      fieldErrors.set(field, node);
+      describe(field, node.id);
+    }
+    node.textContent = message;
+    field.setAttribute('aria-invalid', 'true');
   }
   function clearErrors() {
-    errorOutput.textContent = '';
+    fieldErrors.forEach(node => { node.textContent = ''; });
     Object.values(fields).forEach(field => field.removeAttribute('aria-invalid'));
+    if (errorOutput) errorOutput.textContent = '';
+    if (successOutput) successOutput.textContent = '';
   }
-  fields.date.addEventListener('change', () => refreshSchedule());
-  fields.doctor.addEventListener('change', () => refreshSchedule());
+  const refreshDateBounds = () => { fields.date.min = getJakartaToday(); };
   form.addEventListener('input', clearErrors);
   form.addEventListener('change', clearErrors);
-  // Recompute elapsed times after a suspended tab or a Jakarta date rollover.
   form.addEventListener('focusin', event => {
-    if ([fields.date, fields.doctor, fields.slot].includes(event.target)) refreshSchedule();
+    if (event.target === fields.date) refreshDateBounds();
   });
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') refreshSchedule();
-  });
-  window.addEventListener('focus', () => refreshSchedule());
-  refreshSchedule();
+  refreshDateBounds();
 
   form.addEventListener('submit', () => {
     clearErrors();
-    const now = new Date();
-    refreshSchedule(now);
+    refreshDateBounds();
     const result = validateBooking({
       name: fields.name.value, wa: fields.wa.value, service: fields.service.value,
-      doctorKey: fields.doctor.value, date: fields.date.value, slot: fields.slot.value,
+      doctorKey: fields.doctor.value, date: fields.date.value, time: fields.time.value,
       notes: fields.notes.value, consent: fields.consent.checked,
-    }, now);
+    });
     if (!result.valid) {
-      result.errors.forEach(error => fields[error.field]?.setAttribute('aria-invalid', 'true'));
-      errorOutput.textContent = result.errors.map(error => error.message).join(' ');
+      result.errors.forEach(error => {
+        const field = fields[error.field];
+        if (field) showFieldError(field, error.message);
+      });
+      if (errorOutput) errorOutput.textContent = 'Lengkapi bagian yang ditandai sebelum meninjau permintaan.';
       const first = fields[result.errors[0].field];
-      (first && !first.disabled ? first : errorOutput).focus();
+      (first ?? errorOutput)?.focus();
       return;
     }
     fields.name.value = result.booking.name;
@@ -301,36 +280,62 @@ function initBookingForm() {
   });
 }
 
+const SERVICE_EXAM_NOTE = 'Tindakan akhir ditentukan bersama dokter setelah pemeriksaan. Informasi ini bersifat umum, bukan diagnosis atau jaminan hasil.';
+
 const serviceDetails = {
   konsultasi: {
     title: 'Pemeriksaan & Konsultasi Dokter Gigi',
-    description: 'Pemeriksaan untuk memahami kondisi gigi dan mulut serta mendiskusikan pilihan perawatan.',
-    points: ['Sampaikan keluhan dan riwayat kesehatan yang relevan.', 'Rencana, biaya, dan kebutuhan pemeriksaan lanjutan dibahas bersama dokter.'],
+    description: 'Pemeriksaan untuk memahami kondisi gigi dan mulut, lalu mendiskusikan pilihan perawatan bersama dokter dengan bahasa yang mudah dipahami.',
+    forWhom: [
+      'Belum pernah memeriksakan gigi dan ingin tahu kondisi saat ini.',
+      'Mengalami keluhan seperti nyeri, gusi berdarah, atau gigi sensitif.',
+      'Ingin merencanakan pemeriksaan rutin untuk diri sendiri atau keluarga.',
+    ],
   },
   scaling: {
     title: 'Scaling / Pembersihan Karang Gigi',
-    description: 'Scaling bertujuan membersihkan plak dan karang gigi. Kebutuhan tindakan ditentukan setelah pemeriksaan.',
-    points: ['Sensitivitas dan pengalaman selama tindakan dapat berbeda pada setiap pasien.', 'Dokter dapat menjelaskan perawatan kebersihan gigi setelah tindakan.'],
+    description: 'Pembersihan plak dan karang gigi dengan alat khusus. Kebutuhan dan cara pembersihan ditentukan setelah dokter memeriksa kondisi gigi dan gusi.',
+    forWhom: [
+      'Gusi mudah berdarah atau terasa tidak nyaman saat menyikat gigi.',
+      'Terlihat plak atau karang gigi yang ingin dibersihkan.',
+      'Ingin menjaga kebersihan mulut melalui pemeriksaan berkala.',
+    ],
   },
   tambal: {
     title: 'Tambal Gigi',
-    description: 'Penambalan merupakan salah satu pilihan untuk memperbaiki kerusakan gigi, tergantung luas dan kondisi kerusakannya.',
-    points: ['Pilihan bahan dan kesesuaian perawatan perlu dinilai dokter.', 'Kerusakan tertentu mungkin membutuhkan perawatan lain atau rujukan.'],
+    description: 'Penambalan gigi untuk memperbaiki kerusakan seperti gigi berlubang. Pilihan bahan dan cara penanganan dibahas setelah pemeriksaan.',
+    forWhom: [
+      'Gigi terasa ngilu saat makan atau minum.',
+      'Terlihat lubang, retakan, atau bagian gigi yang terkikis.',
+      'Baru melepas tambalan lama dan ingin menilai kondisinya.',
+    ],
   },
   cabut: {
-    title: 'Cabut Gigi',
-    description: 'Pencabutan dapat dipertimbangkan bila gigi tidak dapat dipertahankan atau terdapat indikasi lain setelah pemeriksaan.',
-    points: ['Dokter menjelaskan pilihan, risiko, dan perawatan setelah tindakan.', 'Kasus yang lebih kompleks mungkin memerlukan pemeriksaan tambahan atau rujukan.'],
+    title: 'Cabut Gigi & Bedah Minor',
+    description: 'Pencabutan gigi dipertimbangkan bila gigi tidak dapat dipertahankan lagi. Dokter menilai kondisi gigi dan jaringan sekitarnya sebelum menentukan tindakan.',
+    forWhom: [
+      'Gigi goyang atau rusak berat dan menimbulkan keluhan.',
+      'Gigi bungsu atau sisa akar yang perlu dinilai dokter.',
+      'Nyeri atau pembengkakan yang mengganggu aktivitas sehari-hari.',
+    ],
   },
   anak: {
-    title: 'Perawatan Gigi Anak',
-    description: 'Pemeriksaan dan edukasi kesehatan gigi anak disesuaikan dengan usia, kebutuhan, dan kesiapan anak.',
-    points: ['Orang tua dapat menyampaikan riwayat kesehatan dan pengalaman perawatan anak.', 'Pilihan tindakan dibahas setelah dokter menilai kondisi gigi anak.'],
+    title: 'Perawatan Gigi Anak (Pedodonti)',
+    description: 'Pemeriksaan gigi anak dan edukasi kebersihan mulut yang disesuaikan dengan usia, kebutuhan, serta kesiapan anak.',
+    forWhom: [
+      'Anak yang baru pertama kali akan berkunjung ke dokter gigi.',
+      'Muncul keluhan seperti gigi berlubang atau nyeri pada anak.',
+      'Orang tua yang ingin mempelajari cara merawat gigi anak di rumah.',
+    ],
   },
   veneer: {
-    title: 'Konsultasi Veneer / Perawatan Estetik',
-    description: 'Konsultasi untuk membahas keinginan terkait tampilan gigi dan menilai kesesuaian pilihan perawatan.',
-    points: ['Kondisi gigi dan gusi perlu diperiksa sebelum menentukan tindakan.', 'Hasil, risiko, biaya, dan kebutuhan pemeliharaan dapat berbeda untuk setiap pasien.'],
+    title: 'Perawatan Estetik, Bleaching & Veneer',
+    description: 'Konsultasi mengenai tampilan gigi — warna, bentuk, dan kerapian. Dokter memeriksa kondisi gigi dan gusi sebelum membahas pilihan perawatan estetik.',
+    forWhom: [
+      'Ingin memperbaiki warna atau bentuk tampilan gigi.',
+      'Mempertimbangkan perawatan estetik dan ingin memahami indikasi serta risikonya.',
+      'Ingin tahu pilihan pemeliharaan setelah perawatan estetik.',
+    ],
   },
 };
 
@@ -345,14 +350,14 @@ function initServiceModals() {
       modal ||= createDialog('service-detail-modal', 'Informasi layanan');
       modal.title.textContent = item.title;
       const list = element('ul', 'service-modal-list');
-      item.points.forEach(point => list.append(element('li', '', point)));
+      item.forWhom.forEach(point => list.append(element('li', '', point)));
       modal.body.replaceChildren(
         element('p', '', item.description),
-        element('h3', 'font-headline', 'Yang perlu diketahui'),
+        element('h3', 'font-display', 'Siapa yang perlu berkonsultasi'),
         list,
-        element('p', 'text-sm', 'Informasi umum, bukan diagnosis atau jaminan hasil. Ketersediaan layanan dan jadwal perlu dikonfirmasi kepada admin.'),
+        element('p', 'modal-note text-sm', SERVICE_EXAM_NOTE),
       );
-      const book = element('button', 'btn-primary text-sm', 'Pilih layanan ini');
+      const book = element('button', 'btn-primary text-sm', 'Ajukan Kunjungan');
       book.type = 'button';
       book.addEventListener('click', () => {
         modal.close(() => {
@@ -428,13 +433,10 @@ function initFaqAccordion() {
   });
 }
 
-
 function init() {
   document.querySelectorAll('.material-symbols-outlined').forEach(icon => icon.setAttribute('aria-hidden', 'true'));
   initMobileMenu();
   renderDoctors();
-  renderPatientReviews();
-  initGallery();
   initBookingForm();
   initServiceModals();
   initFaqAccordion();

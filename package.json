@@ -1,7 +1,7 @@
 {
   "name": "hademedika-website",
   "version": "1.0.0",
-  "description": "Pratinjau website layanan gigi Hade Medika Cicurug dengan permintaan kunjungan melalui WhatsApp",
+  "description": "Website layanan gigi Hade Medika Cicurug dengan pengajuan kunjungan melalui WhatsApp yang dikonfirmasi admin",
   "type": "module",
   "scripts": {
     "dev": "vite",
