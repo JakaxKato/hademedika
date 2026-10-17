@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { DENTISTS, getDentist } from '../assets/js/clinic-data.js';
+import { DOCTORS, getDoctor } from '../assets/js/clinic-data.js';
 import {
   CLINIC_WHATSAPP, SERVICES, TIME_PREFERENCES, TIME_ZONE, buildWhatsAppMessage,
   buildWhatsAppUrl, formatBookingDate, getDoctorLabel, getJakartaToday,
@@ -15,26 +15,45 @@ const baseInput = {
   doctorKey: 'isna', date: MONDAY, time: 'pagi', notes: '  Ingin konsultasi  ', consent: true,
 };
 
-test('roster contains only the seven supplied dentists, with schedule labels and no invented profiles', () => {
-  assert.deepEqual(DENTISTS.map(doctor => doctor.key), ['eka', 'hanif', 'irsyad', 'firda', 'linni', 'shania', 'isna']);
-  for (const doctor of DENTISTS) {
-    assert.equal(doctor.role, 'Dokter Gigi');
-    assert.equal(doctor.name, `drg. ${doctor.key[0].toUpperCase()}${doctor.key.slice(1)}`);
+const DENTIST_KEYS = ['eka', 'hanif', 'irsyad', 'firda', 'linni', 'shania', 'isna'];
+const GENERAL_KEYS = ['hamidi', 'kirei'];
+
+test('roster carries the whole clinic team with honest roles and no invented profiles', () => {
+  assert.deepEqual(DOCTORS.map(doctor => doctor.key), [...DENTIST_KEYS, ...GENERAL_KEYS, 'nadelia']);
+  for (const doctor of DOCTORS) {
     assert.ok(doctor.initials);
     assert.ok(doctor.scheduleLabels.length);
-    assert.ok(doctor.scheduleLabels.every(label => label.includes('WIB')));
+    assert.ok(doctor.scheduleLabels.every(label => typeof label === 'string' && label.trim().length > 0));
+    assert.ok(doctor.scheduleLabels.some(label => label.includes('WIB')), `${doctor.key} needs a WIB schedule`);
     for (const absent of ['sip', 'quote', 'photo', 'bio', 'rating']) {
       assert.ok(!Object.hasOwn(doctor, absent));
     }
   }
-  assert.equal(getDentist('hamidi'), undefined);
-  assert.equal(getDentist('kirei'), undefined);
-  assert.equal(getDentist('nadelia'), undefined);
+  for (const key of DENTIST_KEYS) {
+    const doctor = getDoctor(key);
+    assert.equal(doctor.role, 'Dokter Gigi');
+    assert.equal(doctor.name, `drg. ${key[0].toUpperCase()}${key.slice(1)}`);
+    assert.ok(doctor.scheduleLabels.every(label => label.includes('WIB')));
+  }
+  for (const key of GENERAL_KEYS) {
+    const doctor = getDoctor(key);
+    assert.equal(doctor.role, 'Dokter Umum');
+    assert.equal(doctor.name, `dr. ${key[0].toUpperCase()}${key.slice(1)}`);
+  }
+  assert.equal(getDoctor('nadelia').role, 'Dokter Estetika');
+  assert.equal(getDoctor('nadelia').name, 'dr. Nadelia');
+  assert.equal(getDoctor('unknown'), undefined);
+});
+
+test('general and aesthetic schedules keep the clinic poster wording', () => {
+  assert.deepEqual(getDoctor('hamidi').scheduleLabels, ['Senin–Sabtu · 08:00–20:00 WIB']);
+  assert.deepEqual(getDoctor('kirei').scheduleLabels, ['Minggu · 08:00–18:00 WIB']);
+  assert.deepEqual(getDoctor('nadelia').scheduleLabels, ['Senin–Sabtu · 13:00–17:00 WIB', 'Minggu · By Appointment']);
 });
 
 test('Sunday labels stay concise while retaining the admin-confirmation requirement', () => {
   for (const [key, recurrence] of [['shania', 'kedua'], ['isna', 'keempat']]) {
-    const doctor = getDentist(key);
+    const doctor = getDoctor(key);
     assert.equal(doctor.scheduleLabels.at(-1), `Minggu · 08:00–18:00 WIB (minggu ${recurrence}; konfirmasi admin)`);
   }
 });

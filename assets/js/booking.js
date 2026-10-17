@@ -1,4 +1,4 @@
-import { getDentist } from './clinic-data.js';
+import { getDoctor } from './clinic-data.js';
 
 export const TIME_ZONE = 'Asia/Jakarta';
 export const CLINIC_WHATSAPP = '6281359599996';
@@ -67,7 +67,7 @@ export function validateBooking(input = {}, now = new Date()) {
     notes: text(input.notes),
     consent: input.consent === true,
   };
-  const validDoctor = booking.doctorKey === '' || Boolean(getDentist(booking.doctorKey));
+  const validDoctor = booking.doctorKey === '' || Boolean(getDoctor(booking.doctorKey));
   const errors = [];
   if (!booking.name) errors.push({ field: 'name', message: 'Isi nama pasien.' });
   if (!booking.wa) errors.push({ field: 'wa', message: 'Isi nomor WhatsApp Indonesia yang valid, misalnya 0812-3456-7890 atau +62 812-3456-7890.' });
@@ -86,8 +86,8 @@ export function formatBookingDate(date) {
 
 export function getDoctorLabel(doctorKey) {
   if (doctorKey === '') return 'Dokter yang tersedia (tanpa preferensi)';
-  const doctor = getDentist(doctorKey);
-  if (!doctor) throw new RangeError('Unknown dentist');
+  const doctor = getDoctor(doctorKey);
+  if (!doctor) throw new RangeError('Unknown doctor');
   return doctor.name;
 }
 
@@ -96,7 +96,7 @@ export function buildWhatsAppMessage(booking) {
   if (!Object.hasOwn(TIME_PREFERENCES, booking.time)) throw new RangeError('Unknown time preference');
   return [
     'Halo Admin Hade Medika Cicurug,',
-    'Saya ingin mengajukan permintaan kunjungan perawatan gigi:',
+    'Saya ingin mengajukan permintaan kunjungan:',
     '',
     `Nama: ${booking.name}`,
     `WhatsApp: ${booking.wa}`,

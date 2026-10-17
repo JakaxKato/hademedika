@@ -35,9 +35,12 @@ API key, atau WhatsApp Business API yang dibutuhkan untuk versi ini.
   ilustrasi garis arsitektural, rasio yang tetap (hero 4:3, kartu dokter 4:5),
   dan label kecil "Media klinik akan ditambahkan". Komponen yang sama siap
   menerima foto resmi tanpa mengubah layout.
-- **Tujuh dokter gigi** dengan jadwal praktik dari materi poster; nama, peran,
-  dan label jadwal ditampilkan sebagai teks. Tidak ada potret, SIP, atau
-  biografi yang dikarang. Pilihan dokter langsung mengisi formulir.
+- **Sepuluh dokter** (tujuh dokter gigi, dua dokter umum, satu dokter estetika)
+  dengan jadwal praktik dari materi poster; nama, peran, dan label jadwal
+  ditampilkan sebagai teks, dan setiap tenaga dijelaskan sesuai perannya
+  (tidak ada dokter umum yang dipresentasikan sebagai dokter gigi). Tidak ada
+  potret, SIP, atau biografi yang dikarang. Pilihan dokter langsung mengisi
+  formulir.
 - **Formulir kunjungan**: nama pasien, nomor WhatsApp, kebutuhan perawatan,
   preferensi dokter, tanggal (kosong secara default, minimum hari ini menurut
   `Asia/Jakarta`), preferensi waktu (Pagi/Siang/Sore/Fleksibel), catatan, dan
@@ -73,10 +76,14 @@ API key, atau WhatsApp Business API yang dibutuhkan untuk versi ini.
    alt="Deskripsi foto">` — lalu hapus elemen `.clinic-media-label`.
    Jangan ubah `.clinic-media-frame`, karena rasio 4:3 dipertahankan agar
    tidak ada pergeseran layout.
-2. **Dokter**: letakkan potret di `assets/images/doctors/` dengan nama
-   `drg-<key>.jpg` (lihat `assets/images/doctors/README.md`). Pemuat Vite
+2. **Dokter**: letakkan potret di `assets/images/doctors/`. Nama file dicocokkan
+   ke key dokter setelah awalan `drg`/`dr`, titik, spasi, dan tanda hubung
+   dibuang — `drg-eka.jpg`, `eka.jpg`, dan `dr. Eka.JPG` sama-sama dikenali
+   (lihat `assets/images/doctors/README.md` untuk daftar lengkap). Pemuat Vite
    mendeteksi file saat dev server/build berjalan; kartu otomatis menampilkan
-   foto dengan `object-fit: cover` dan alt text yang bermakna.
+   foto dengan `object-fit: cover`, rasio 4:5 yang tetap, dan alt text
+   (`drg. …, Dokter Gigi`). Poster profil dari klinik juga tampil utuh selama
+   rasionya mendekati 4:5.
 
 Gunakan hanya foto berizin dari klinik, dengan pencahayaan yang konsisten dan
 tanpa filter yang mengubah wajah.
@@ -94,6 +101,9 @@ tanpa filter yang mengubah wajah.
   berasal dari materi poster).
 - Pin sementara `-6.796823, 106.776861` berasal dari sumber pihak ketiga; minta
   tautan Maps resmi dari klinik sebelum publikasi.
+- Jadwal praktik kesepuluh dokter ditranskrip dari poster klinik dan tetap
+  dikonfirmasi ulang oleh admin; perbarui `assets/js/clinic-data.js` bila jam
+  praktik berubah.
 
 Jangan menambahkan nama, kredensial, penghargaan, testimoni, harga, atau jam
 buka tanpa sumber tertulis dari klinik.

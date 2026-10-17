@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 async function openSite(page) {
   await page.clock.install({ time: new Date('2026-10-18T00:00:00Z') });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('.doctor-card')).toHaveCount(7);
+  await expect(page.locator('.doctor-card')).toHaveCount(10);
 }
 
 async function fillBooking(page) {
@@ -28,13 +28,33 @@ test('renders the refined hero, media placeholder, quick booking band, and real 
   await expect(page.locator('#ajukan')).toContainText('Sudah tahu yang Anda butuhkan?');
   await expect(page.locator('#doctor-grid')).toContainText('drg. Eka');
   await expect(page.locator('#doctor-grid')).toContainText('drg. Isna');
-  await expect(page.locator('#doctor option')).toHaveCount(8);
+  await expect(page.locator('#doctor-grid')).toContainText('dr. Hamidi');
+  await expect(page.locator('#doctor-grid')).toContainText('dr. Nadelia');
+  await expect(page.locator('#doctor option')).toHaveCount(11);
   await expect(page.locator('#dokter')).toHaveCSS('padding-top', /64px|96px/);
   await expect(page.locator('iframe[title*="Google Maps"]')).toHaveAttribute('src', /maps\.google\.com\/maps\?.*output=embed/);
   const favicon = page.locator('link[rel="icon"][type="image/svg+xml"]');
   const iconResponse = await page.request.get(await favicon.getAttribute('href'));
   expect(iconResponse.ok()).toBeTruthy();
   expect(errors).toEqual([]);
+});
+
+test('every doctor card shows its real poster without broken images', async ({ page }) => {
+  await openSite(page);
+  const images = page.locator('.doctor-card .clinic-media-img');
+  const total = await images.count();
+  expect(total).toBe(10);
+  for (let index = 0; index < total; index += 1) {
+    const image = images.nth(index);
+    await image.scrollIntoViewIfNeeded();
+    await expect(image).toHaveJSProperty('complete', true);
+    expect(await image.evaluate(node => node.naturalWidth), `Broken image #${index}`).toBeGreaterThan(0);
+  }
+  const photos = page.locator('.doctor-card img:not([aria-hidden="true"])');
+  await expect(photos).toHaveCount(10);
+  for (let index = 0; index < 10; index += 1) {
+    await expect(photos.nth(index)).toHaveAttribute('alt', /^drg?\. \S+, Dokter /);
+  }
 });
 
 test('has no dead links and every internal anchor target exists', async ({ page }) => {

@@ -1,5 +1,5 @@
 import mediaArtUrl from '../images/media-placeholder.svg';
-import { DENTISTS, getDentist } from './clinic-data.js';
+import { DOCTORS, getDoctor } from './clinic-data.js';
 import { initScrollReveals } from './reveals.js';
 import {
   SERVICES, TIME_PREFERENCES, buildWhatsAppUrl, formatBookingDate, getDoctorLabel,
@@ -10,9 +10,12 @@ const MEDIA_LABEL = 'Media klinik akan ditambahkan';
 const doctorPhotos = import.meta.glob('../images/doctors/*.{jpg,jpeg,png,webp}', {
   eager: true, query: '?url', import: 'default',
 });
-const doctorPhotoByKey = Object.fromEntries(Object.entries(doctorPhotos).map(([path, url]) => [
-  path.split('/').pop().replace(/\.[^.]+$/, '').replace(/^drg-/, '').toLowerCase(), url,
-]));
+/** File names are forgiving: "drg-eka.jpg", "dr. Eka.jpg", "eka.JPG" all map to "eka". */
+const doctorPhotoByKey = Object.fromEntries(Object.entries(doctorPhotos).map(([path, url]) => {
+  const basename = path.split('/').pop().replace(/\.[^.]+$/, '');
+  const key = basename.toLowerCase().replace(/^(drg|dr)[\s._-]*/, '').trim();
+  return [key, url];
+}));
 const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function element(tag, className = '', text) {
@@ -105,12 +108,12 @@ function renderDoctors() {
   if (select) {
     const selected = select.value;
     select.replaceChildren(new Option('Tanpa preferensi dokter', ''));
-    DENTISTS.forEach(doctor => select.add(new Option(doctor.name, doctor.key)));
-    select.value = getDentist(selected) ? selected : '';
+    DOCTORS.forEach(doctor => select.add(new Option(doctor.name, doctor.key)));
+    select.value = getDoctor(selected) ? selected : '';
   }
   const grid = document.getElementById('doctor-grid');
   if (!grid) return;
-  const cards = DENTISTS.map(doctor => {
+  const cards = DOCTORS.map(doctor => {
     const card = element('article', 'doctor-card');
     const titleId = `doctor-${doctor.key}-title`;
     card.setAttribute('aria-labelledby', titleId);
@@ -118,7 +121,7 @@ function renderDoctors() {
       ratio: '4x5',
       monogram: doctor.initials,
       photo: doctorPhotoByKey[doctor.key] || null,
-      alt: `Foto ${doctor.name}, ${doctor.role} di Hade Medika Cicurug`,
+      alt: `${doctor.name}, ${doctor.role}`,
     }));
     const info = element('div', 'doctor-info');
     const role = element('p', 'doctor-role', doctor.role);

@@ -1,8 +1,8 @@
-/** Practice schedules transcribed from the clinic's own poster material.
+/** Clinic team transcribed from the clinic's own poster material.
  * The labels below are the only schedule info shown in the UI; the exact
  * date, time, and doctor availability are always confirmed by the admin.
  */
-export const DENTISTS = [
+export const DOCTORS = [
   {
     key: 'eka',
     name: 'drg. Eka',
@@ -71,8 +71,32 @@ export const DENTISTS = [
       'Minggu · 08:00–18:00 WIB (minggu keempat; konfirmasi admin)',
     ],
   },
+  {
+    key: 'hamidi',
+    name: 'dr. Hamidi',
+    initials: 'H',
+    role: 'Dokter Umum',
+    scheduleLabels: ['Senin–Sabtu · 08:00–20:00 WIB'],
+  },
+  {
+    key: 'kirei',
+    name: 'dr. Kirei',
+    initials: 'K',
+    role: 'Dokter Umum',
+    scheduleLabels: ['Minggu · 08:00–18:00 WIB'],
+  },
+  {
+    key: 'nadelia',
+    name: 'dr. Nadelia',
+    initials: 'N',
+    role: 'Dokter Estetika',
+    scheduleLabels: [
+      'Senin–Sabtu · 13:00–17:00 WIB',
+      'Minggu · By Appointment',
+    ],
+  },
 ];
 
-export function getDentist(key) {
-  return DENTISTS.find(doctor => doctor.key === key);
+export function getDoctor(key) {
+  return DOCTORS.find(doctor => doctor.key === key);
 }
