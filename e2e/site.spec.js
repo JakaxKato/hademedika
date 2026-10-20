@@ -16,7 +16,7 @@ async function fillBooking(page) {
   await page.locator('#consent').check();
 }
 
-test('renders the refined hero, media placeholder, quick booking band, and real Maps embed', async ({ page }) => {
+test('renders the refined hero, clinic media, quick booking band, and real Maps embed', async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await openSite(page);
@@ -24,7 +24,10 @@ test('renders the refined hero, media placeholder, quick booking band, and real 
   await expect(page.getByRole('link', { name: 'Buat Janji', exact: true }).first()).toHaveAttribute('href', '#reservasi');
   await expect(page.getByRole('link', { name: 'Lihat Layanan', exact: true })).toHaveAttribute('href', '#perawatan');
   await expect(page.locator('.hero-note')).toContainText('Jadwal dikonfirmasi oleh admin klinik.');
-  await expect(page.locator('.clinic-media-label').first()).toHaveText('Media klinik akan ditambahkan');
+  const heroImage = page.locator('main .clinic-media-img').first();
+  await expect(heroImage).toHaveAttribute('alt', /Klinik Hade Medika/i);
+  await expect(heroImage).toHaveJSProperty('complete', true);
+  expect(await heroImage.evaluate(img => img.naturalWidth)).toBeGreaterThan(0);
   await expect(page.locator('#ajukan')).toContainText('Sudah tahu yang Anda butuhkan?');
   await expect(page.locator('#doctor-grid')).toContainText('drg. Eka');
   await expect(page.locator('#doctor-grid')).toContainText('drg. Isna');
@@ -224,7 +227,7 @@ test('remains informative without JavaScript', async ({ browser, baseURL }) => {
     await expect(page.locator('#dokter')).toContainText('drg. Eka');
     await expect(page.locator('.faq-content').first()).toBeVisible();
     await expect(page.locator('#ulasan')).toContainText('Lihat pengalaman pasien di Google Maps');
-    await expect(page.locator('.clinic-media-label').first()).toHaveText('Media klinik akan ditambahkan');
+    await expect(page.locator('main .clinic-media-img').first()).toHaveAttribute('alt', /Klinik Hade Medika/i);
     await expect(page.locator('a[href="https://instagram.com"], a[href="https://maps.google.com"]')).toHaveCount(0);
   } finally {
     await context.close();

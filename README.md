@@ -4,10 +4,10 @@ Website statis dengan Vite, Tailwind CSS 3 yang dikompilasi saat build,
 JavaScript modular, serta tipografi Newsreader dan Manrope. Nuansa krem dan
 hijau dibuat senada dengan materi klinik yang diberikan.
 
-**Status konten:** tarif resmi, foto klinik/dokter, ulasan, rating, dan jam
-kunjungan universal belum diverifikasi klinik. Semua bagian tersebut sengaja
-tidak menampilkan angka atau gambar rekaan; gantinya ada media placeholder,
-pengajuan jadwal yang dikonfirmasi admin, dan tautan ke Google Maps.
+**Status konten:** foto ruang klinik dan potret tim dokter berasal dari materi
+klinik. Tarif resmi, ulasan, rating, dan jam kunjungan universal belum
+diverifikasi, sehingga tidak ada angka atau ulasan rekaan; jadwal kunjungan
+tetap dikonfirmasi admin dan ulasan ditautkan ke Google Maps.
 
 ## Menjalankan
 
@@ -31,10 +31,10 @@ API key, atau WhatsApp Business API yang dibutuhkan untuk versi ini.
 
 ## Yang sudah tersedia
 
-- **Media placeholder** (`.clinic-media`): komposisi krem–sage dengan
-  ilustrasi garis arsitektural, rasio yang tetap (hero 4:3, kartu dokter 4:5),
-  dan label kecil "Media klinik akan ditambahkan". Komponen yang sama siap
-  menerima foto resmi tanpa mengubah layout.
+- **Media klinik** (`.clinic-media`): foto ruang tunggu pada hero (rasio 4:3,
+  `assets/images/klinik-hade-medika.png`) dan potret tim dokter pada kartu
+  (rasio 4:5). Placeholder sage tetap tersedia sebagai fallback bila foto
+  dokter belum ada, tanpa mengubah layout.
 - **Sepuluh dokter** (tujuh dokter gigi, dua dokter umum, satu dokter estetika)
   dengan jadwal praktik dari materi poster; nama, peran, dan label jadwal
   ditampilkan sebagai teks, dan setiap tenaga dijelaskan sesuai perannya
@@ -68,14 +68,15 @@ API key, atau WhatsApp Business API yang dibutuhkan untuk versi ini.
   opacity/transform dan menghormati `prefers-reduced-motion`.
 - Konten tetap terlihat ketika JavaScript/IntersectionObserver tidak tersedia.
 
-## Mengganti media placeholder dengan foto resmi
+## Mengganti media klinik dan foto dokter
 
-1. **Hero** (`index.html`, cari `clinic-media-art`): ganti `<img
-   class="clinic-media-img clinic-media-art" …>` dengan foto asli —
-   `<img class="clinic-media-img" src="assets/images/nama-foto.jpg"
-   alt="Deskripsi foto">` — lalu hapus elemen `.clinic-media-label`.
-   Jangan ubah `.clinic-media-frame`, karena rasio 4:3 dipertahankan agar
-   tidak ada pergeseran layout.
+1. **Hero** (`index.html`, cari `clinic-media-img`): foto saat ini memakai
+   `assets/images/klinik-hade-medika.png` dengan alt deskriptif. Untuk
+   menggantinya, timpa file tersebut atau ubah `src`; pertahankan
+   `class="clinic-media-img"`, `data-ratio="4x3"` pada `.clinic-media`, dan
+   `.clinic-media-frame` agar rasio serta layout hero tidak bergeser. Foto
+   potret akan dipotong otomatis dengan `object-fit: cover`; crop ke 4:3
+   sebelum diunggah bila seluruh bagian penting ingin terlihat.
 2. **Dokter**: letakkan potret di `assets/images/doctors/`. Nama file dicocokkan
    ke key dokter setelah awalan `drg`/`dr`, titik, spasi, dan tanda hubung
    dibuang — `drg-eka.jpg`, `eka.jpg`, dan `dr. Eka.JPG` sama-sama dikenali
@@ -86,7 +87,8 @@ API key, atau WhatsApp Business API yang dibutuhkan untuk versi ini.
    rasionya mendekati 4:5.
 
 Gunakan hanya foto berizin dari klinik, dengan pencahayaan yang konsisten dan
-tanpa filter yang mengubah wajah.
+tanpa filter yang mengubah wajah. Simpan hero dan potret dokter sebagai JPG,
+PNG, atau WebP, lalu kompres ke ukuran yang wajar sebelum deploy.
 
 ## Informasi yang harus diverifikasi sebelum publikasi
 
